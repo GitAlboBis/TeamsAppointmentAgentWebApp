@@ -1,0 +1,12 @@
+/* ── WebChat CSS Overrides ── */
+
+/* Ensure WebChat fills its container */
+[class^="webchat"] {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Adjust the transcript container height */
+.webchat__basic-transcript {
+    flex: 1;
+}

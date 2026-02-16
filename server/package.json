@@ -1,0 +1,36 @@
+{
+    "name": "copilot-web-client-server",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@azure/msal-node": "^2.x",
+        "cors": "^2.x",
+        "dotenv": "^16.x",
+        "express": "^4.x",
+        "helmet": "^7.x",
+        "jsonwebtoken": "^9.x",
+        "jwks-rsa": "^3.x",
+        "node-fetch": "^3.3.2"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.x",
+        "@types/express": "^4.x",
+        "@types/jsonwebtoken": "^9.x",
+        "@types/node": "^20.x",
+        "@types/supertest": "^6.x",
+        "@vitest/coverage-v8": "^2.x",
+        "supertest": "^7.x",
+        "tsx": "^4.x",
+        "typescript": "^5.x",
+        "vitest": "^2.x"
+    }
+}

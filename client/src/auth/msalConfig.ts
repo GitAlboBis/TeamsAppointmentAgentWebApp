@@ -1,0 +1,90 @@
+import {
+    PublicClientApplication,
+    type Configuration,
+    LogLevel,
+    EventType,
+    type EventMessage,
+    type AuthenticationResult,
+} from '@azure/msal-browser';
+import { MSAL_CLIENT_ID, MSAL_TENANT_ID, MSAL_REDIRECT_URI } from '@/shared/constants';
+
+/**
+ * MSAL configuration for the frontend SPA.
+ * PRD §FR1.1 — Authorization Code + PKCE flow.
+ */
+const msalConfig: Configuration = {
+    auth: {
+        clientId: MSAL_CLIENT_ID,
+        authority: `https://login.microsoftonline.com/${MSAL_TENANT_ID}`,
+        redirectUri: MSAL_REDIRECT_URI,
+        postLogoutRedirectUri: MSAL_REDIRECT_URI,
+    },
+    cache: {
+        cacheLocation: 'localStorage',
+    },
+    system: {
+        loggerOptions: {
+            logLevel: LogLevel.Warning,
+            loggerCallback: (level, message, containsPii) => {
+                if (containsPii) return;
+                if (level === LogLevel.Error) console.error(message);
+                else if (level === LogLevel.Warning) console.warn(message);
+            },
+        },
+    },
+};
+
+/**
+ * Scopes for the login request.
+ * PRD §FR1.2 — openid, profile, User.Read, + backend API scope.
+ */
+/**
+ * Scopes for the login request.
+ * PRD §FR1.2 — openid, profile, User.Read (Graph).
+ * Hybrid Auth: We do NOT request the backend API scope anymore to avoid Admin Consent.
+ */
+export const loginRequest = {
+    scopes: [
+        'openid',
+        'profile',
+        'User.Read',
+    ],
+    prompt: 'select_account',
+};
+
+export const apiTokenRequest = {
+    // We request User.Read as a placeholder to get a valid token, 
+    // though the backend won't validate it against the custom scope anymore.
+    scopes: ['User.Read'],
+};
+
+/**
+ * Scopes for the interactive consent fallback.
+ * Includes Graph scopes (Calendar, People) to force user consent.
+ */
+export const consentRequest = {
+    scopes: [
+        'Calendars.ReadWrite',
+        'People.Read',
+    ],
+};
+
+/**
+ * Singleton MSAL PublicClientApplication instance.
+ * Adapted from sample's acquireToken.ts pattern.
+ *
+ * MSAL v5 requires initialize() before any other API calls.
+ */
+export const msalInstance = new PublicClientApplication(msalConfig);
+
+/** Initialize MSAL — must complete before any auth operations. */
+export const msalReady = msalInstance.initialize().then(() => {
+    // Set active account on login success
+    msalInstance.addEventCallback((event: EventMessage) => {
+        if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
+            const payload = event.payload as AuthenticationResult;
+            const account = payload.account;
+            msalInstance.setActiveAccount(account);
+        }
+    });
+});
