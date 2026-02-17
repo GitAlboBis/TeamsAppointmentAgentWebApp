@@ -28,20 +28,7 @@ const useStyles = makeStyles({
 
 export function Sidebar() {
     const styles = useStyles();
-    const { sessions, activeSessionId, switchSession, deleteSession } = useSessionStore();
-
-    // Placeholder for handleNewChat
-    const handleNewChat = async () => {
-        // In real flow, this would probably trigger a specialized action that also
-        // tells the ChatPane to reset. For now, we'll just create a placeholder session entry.
-        // But wait, createSession requires a conversationId token etc.
-        // We probably need to lift the "creation" logic to a higher level or
-        // let ChatPane handle the initial creation and then sync to DB.
-
-        // Phase 3 MVP: Just alert for now or implement a "stub" session
-        // that gets populated when ChatPane connects?
-        console.log("New Chat clicked");
-    };
+    const { sessions, activeSessionId, switchSession, deleteSession, handleNewChat } = useSessionStore();
 
     return (
         <div className={styles.container}>

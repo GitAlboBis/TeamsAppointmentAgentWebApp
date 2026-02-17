@@ -14,6 +14,9 @@ export function createActivityMiddleware() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return () => (next: any) => (...args: any[]) => {
         const [card] = args;
+        if (card?.activity && !card.activity.id) {
+            card.activity.id = Math.random().toString(36).substring(7);
+        }
 
         // Hide OAuthCard attachments — SSO interceptor handles these
         if (

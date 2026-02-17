@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useMsal, useAccount } from '@azure/msal-react';
 import { InteractionRequiredAuthError, InteractionStatus } from '@azure/msal-browser';
 import { loginRequest, apiTokenRequest, consentRequest } from './msalConfig';
@@ -22,25 +23,41 @@ export function useAuth() {
      * PRD §FR1.1 — Azure AD OAuth 2.0 + PKCE.
      * Switched to Redirect flow to avoid popup blocking and extension interference.
      */
-    async function login() {
+    const login = useCallback(async () => {
         if (inProgress !== InteractionStatus.None) return;
         try {
             await instance.loginRedirect(loginRequest);
         } catch (error) {
             console.error("Login failed:", error);
         }
-    }
+    }, [instance, inProgress]);
+
+    // Expose loginRedirect simply as an alias to login (or instance.loginRedirect) if needed
+    // But forcing the standard login request is safer.
+    // For manual connection with specific scopes, we might expose the raw method or an overload.
+    const loginRedirect = useCallback(async (request?: any) => {
+        // If we are already handling a redirect, don't try to redirect again immediately
+        if (inProgress !== InteractionStatus.None && inProgress !== InteractionStatus.Startup) return;
+
+        try {
+            await instance.acquireTokenRedirect(request || loginRequest);
+        } catch (error) {
+            console.error("Login Redirect failed:", error);
+            throw error;
+        }
+    }, [instance, inProgress]);
+
 
     /**
      * Logout and clear MSAL cache.
      */
-    async function logout() {
+    const logout = useCallback(async () => {
         if (inProgress !== InteractionStatus.None) return;
 
         await instance.logoutRedirect({
             postLogoutRedirectUri: window.location.origin,
         });
-    }
+    }, [instance, inProgress]);
 
     /**
      * Acquire an access token silently, falling back to popup.
@@ -48,17 +65,20 @@ export function useAuth() {
      *
      * PRD §FR1.6 — Silent refresh; no re-login unless refresh token expired.
      */
-    async function getToken(): Promise<string> {
+    const getToken = useCallback(async (scopes?: string[]): Promise<string> => {
         if (!account) {
             throw new Error('No authenticated account');
         }
 
+        const request = {
+            ...apiTokenRequest,
+            scopes: scopes || apiTokenRequest.scopes,
+            account,
+        };
+
         try {
             // 1. Try to get token silently
-            const response = await instance.acquireTokenSilent({
-                ...apiTokenRequest,
-                account,
-            });
+            const response = await instance.acquireTokenSilent(request);
             return response.accessToken;
         } catch (error) {
             // 2. Check if interaction is required (e.g. consent missing)
@@ -78,14 +98,14 @@ export function useAuth() {
             }
             throw error;
         }
-    }
+    }, [account, instance]);
 
     /**
      * Manuallly trigger the consent popup.
      * Used when the backend reports a "Consent Required" error (AADSTS65001)
      * even though the frontend token acquisition succeeded.
      */
-    async function consent(): Promise<string> {
+    const consent = useCallback(async (): Promise<string> => {
         if (!account) throw new Error('No authenticated account');
         try {
             const response = await instance.acquireTokenPopup({
@@ -97,15 +117,16 @@ export function useAuth() {
             console.error('[useAuth] Consent popup failed:', error);
             throw error;
         }
-    }
+    }, [account, instance]);
 
     return {
         account,
         isAuthenticated,
+        inProgress,
         login,
+        loginRedirect,
         logout,
         getToken,
         consent,
-        inProgress,
     };
 }

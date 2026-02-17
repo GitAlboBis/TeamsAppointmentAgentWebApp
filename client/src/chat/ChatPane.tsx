@@ -1,24 +1,30 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useMsal } from '@azure/msal-react';
-import { InteractionStatus, InteractionRequiredAuthError, BrowserAuthError } from '@azure/msal-browser';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '../auth/useAuth';
+import { InteractionStatus } from '@azure/msal-browser';
 import {
     CopilotStudioClient,
     CopilotStudioWebChat,
     type CopilotStudioWebChatConnection,
     type ConnectionSettings
 } from '@microsoft/agents-copilotstudio-client';
-import { Components } from 'botframework-webchat';
+import ReactWebChat from 'botframework-webchat';
 import { FluentThemeProvider } from 'botframework-webchat-fluent-theme';
-import { agentsSettings } from '../utils/copilotClient';
+import { agentsSettings } from '../shared/constants';
 import { Spinner, MessageBar, MessageBarBody, Button } from '@fluentui/react-components';
 import { ChatInput } from './ChatInput';
-
-const { BasicWebChat, Composer } = Components;
+import { useSessionStore } from '../sessions/useSessionStore';
 
 export const ChatPane = () => {
-    const { instance, inProgress } = useMsal();
+    // Use custom auth hook (Refactored to separate concerns)
+    const { inProgress, getToken, loginRedirect } = useAuth();
+
+    // Use global session store
+    const { activeSessionId, createSession } = useSessionStore();
+
     const [connection, setConnection] = useState<CopilotStudioWebChatConnection | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isCreatingSession, setIsCreatingSession] = useState(false);
 
     const webchatSettings = {
         showTyping: true,
@@ -27,85 +33,67 @@ export const ChatPane = () => {
         }
     };
 
-    // Helper to start the chat connection with a valid token
+    const connectionRef = useRef<CopilotStudioWebChatConnection | null>(null);
+
+    const cleanupConnection = useCallback(() => {
+        if (connectionRef.current) {
+            connectionRef.current.end();
+            connectionRef.current = null;
+        }
+    }, []);
+
     const initializeChat = useCallback((token: string) => {
+        cleanupConnection();
+
         const client = new CopilotStudioClient(
             agentsSettings as ConnectionSettings,
             token
         );
         const newConnection = CopilotStudioWebChat.createConnection(client, webchatSettings);
+
+        newConnection.activity$.subscribe((activity) => {
+            if (activeSessionId && activity.type === 'message') {
+                // Future persistence logic here
+            }
+        });
+
+        connectionRef.current = newConnection;
         setConnection(newConnection);
-    }, []);
+    }, [activeSessionId, cleanupConnection]);
 
-    // Internal helper to get token silently
-    const getToken = useCallback(async () => {
-        const account = instance.getActiveAccount();
-        if (!account) {
-            throw new Error("No active account. Please sign in.");
-        }
-
-        const loginRequest = {
-            scopes: ['https://api.powerplatform.com/.default'],
-            account: account
-        };
+    const connectToCopilot = useCallback(async () => {
+        if (inProgress !== InteractionStatus.None) return;
 
         try {
-            const response = await instance.acquireTokenSilent(loginRequest);
-            return response.accessToken;
-        } catch (e: unknown) {
-            console.error("[ChatPane] Silent token acquisition failed:", e);
-            if (e instanceof InteractionRequiredAuthError ||
-                (e instanceof BrowserAuthError && (e.errorCode === 'block_nested_popups' || e.errorCode === 'interaction_in_progress' || e.errorCode === 'timed_out' || e.errorCode === 'monitor_window_timeout'))) {
-                throw new Error("Additional permissions required. Please click 'Connect' to authorize.");
-            }
-            throw e;
+            // Use enhanced useAuth with specific Power Platform scope
+            const token = await getToken(['https://api.powerplatform.com/.default']);
+            if (!token) return;
+
+            initializeChat(token);
+
+        } catch (err) {
+            console.error("Failed to connect:", err);
+            setError(err instanceof Error ? err.message : "Failed to connect");
         }
-    }, [instance]);
+    }, [getToken, initializeChat, inProgress]);
 
     useEffect(() => {
-        let mounted = true;
-
-        const connectToCopilot = async () => {
-            // Safety: If MSAL is already busy (e.g. handling a redirect from login), 
-            // DO NOT attempt silent token acquisition. It will fail with 'interaction_in_progress'.
-            if (inProgress !== InteractionStatus.None) {
-                console.log("[ChatPane] Interaction in progress. Waiting for MSAL to return to idle...");
-                return;
-            }
-
-            try {
-                // 1. Acquire Token via MSAL (Silent or Throw)
-                const token = await getToken();
-
-                if (!mounted) return;
-
-                // 2. Initialize Chat
-                initializeChat(token);
-
-            } catch (err) {
-                console.error("Failed to connect to Copilot Studio:", err);
-                if (mounted) {
-                    setError(err instanceof Error ? err.message : "Failed to connect");
-                }
-            }
-        };
-
-        // Only try to connect if we are authenticated in the main app
-        if (instance.getActiveAccount()) {
-            connectToCopilot();
-        }
+        // Simple connectivity check on mount or session change
+        // We might want to defer this until user interaction for "New Chat" 
+        // but for now we keep it eager to be ready.
+        connectToCopilot();
 
         return () => {
-            mounted = false;
+            cleanupConnection();
+            setConnection(null);
         };
-    }, [instance, inProgress, getToken, initializeChat]);
+    }, [activeSessionId, connectToCopilot, cleanupConnection]);
 
     const handleManualConnect = () => {
-        // Clear any stuck error state first
         setError(null);
         console.log("[ChatPane] Initiating redirect for manual connection...");
-
-        instance.acquireTokenRedirect({
+        // Use exposed method from useAuth
+        loginRedirect({
             scopes: ['https://api.powerplatform.com/.default'],
             prompt: 'select_account'
         }).catch(e => {
@@ -114,14 +102,42 @@ export const ChatPane = () => {
         });
     };
 
-    const handleSend = (text: string) => {
-        if (connection && text.trim()) {
+    const handleSend = async (text: string) => {
+        if (!text.trim()) return;
+
+        if (!activeSessionId && !isCreatingSession) {
+            setIsCreatingSession(true);
+            try {
+                const token = await getToken(['https://api.powerplatform.com/.default']);
+                // Create local session placeholder
+                // Create local session placeholder
+                await createSession("placeholder-conv-id", token, 3600);
+
+                if (connection) {
+                    const activity = {
+                        type: 'message',
+                        id: uuidv4(),
+                        from: { id: 'user' }, // useAuth could provide account.localAccountId if needed
+                        text: text.trim(),
+                    };
+                    connection.postActivity(activity as any).subscribe({
+                        error: (err) => console.error("Error posting activity:", err)
+                    });
+                    // Sync session details if needed after first message
+                }
+
+            } catch (e) {
+                console.error("Error starting chat:", e);
+            } finally {
+                setIsCreatingSession(false);
+            }
+        } else if (connection) {
             const activity = {
                 type: 'message',
-                from: { id: instance.getActiveAccount()?.localAccountId ?? 'user' },
+                id: uuidv4(),
+                from: { id: 'user' },
                 text: text.trim(),
             };
-
             connection.postActivity(activity as any).subscribe({
                 error: (err) => console.error("Error posting activity:", err)
             });
@@ -159,9 +175,10 @@ export const ChatPane = () => {
     return (
         <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
             <FluentThemeProvider>
-                <Composer directLine={connection}>
-                    <BasicWebChat />
-                </Composer>
+                <ReactWebChat
+                    directLine={connection}
+                    styleOptions={webchatSettings.styleOptions}
+                />
             </FluentThemeProvider>
             <ChatInput onSend={handleSend} disabled={!connection} />
         </div>

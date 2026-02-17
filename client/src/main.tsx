@@ -1,4 +1,3 @@
-import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider } from './auth/AuthProvider';
@@ -13,7 +12,7 @@ import './styles/global.css';
  *
  * PRD §FR4.8 — Entire tree wrapped in FluentProvider.
  */
-import { msalInstance, msalReady } from './auth/msalConfig';
+import { msalReady } from './auth/msalConfig';
 
 // Initialize MSAL (centralized in msalConfig)
 msalReady.then(() => {

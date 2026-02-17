@@ -2,6 +2,7 @@ import { AuthenticatedTemplate, UnauthenticatedTemplate } from '@azure/msal-reac
 import { MainLayout } from './layout/MainLayout';
 import { ChatPane } from './chat/ChatPane';
 import { LoginPage } from './auth/LoginPage';
+import { SessionProvider } from './sessions/SessionContext';
 
 /**
  * Root application component.
@@ -20,9 +21,11 @@ export default function App() {
             </UnauthenticatedTemplate>
 
             <AuthenticatedTemplate>
-                <MainLayout>
-                    <ChatPane />
-                </MainLayout>
+                <SessionProvider>
+                    <MainLayout>
+                        <ChatPane />
+                    </MainLayout>
+                </SessionProvider>
             </AuthenticatedTemplate>
         </>
     );

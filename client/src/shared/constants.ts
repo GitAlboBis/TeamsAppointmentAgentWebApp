@@ -15,6 +15,11 @@ export const COPILOT_TENANT_ID = import.meta.env.VITE_COPILOT_TENANT_ID ?? '';
 export const COPILOT_ENV_ID = import.meta.env.VITE_COPILOT_ENV_ID ?? '';
 export const COPILOT_AGENT_ID = import.meta.env.VITE_COPILOT_AGENT_ID ?? '';
 
+export const agentsSettings = {
+    environmentId: COPILOT_ENV_ID,
+    schemaName: COPILOT_AGENT_ID,
+};
+
 
 // ── Direct Line ──
 export const DL_TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000; // Refresh 5 min before expiry

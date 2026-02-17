@@ -6,13 +6,19 @@ import path from 'path';
 export default defineConfig({
     plugins: [react()],
     resolve: {
-        alias: { '@': path.resolve(__dirname, 'src') },
+        alias: {
+            '@': path.resolve(__dirname, 'src'),
+            path: path.resolve(__dirname, 'src/mocks/empty-module.js'),
+            fs: path.resolve(__dirname, 'src/mocks/empty-module.js'),
+            url: path.resolve(__dirname, 'src/mocks/empty-module.js'),
+            'source-map-js': path.resolve(__dirname, 'src/mocks/empty-module.js'),
+        },
     },
     build: {
         rollupOptions: {
             // `swiper` is an optional dep of `adaptivecards` (carousel feature)
             // not needed for our use case — externalize to avoid build failure
-            external: (id: string) => id === 'swiper' || id.startsWith('swiper/'),
+            external: ['swiper', 'swiper/react', 'swiper/css'],
         },
     },
     server: {
