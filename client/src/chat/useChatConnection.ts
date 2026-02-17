@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createStore } from 'botframework-webchat';
 import {
     CopilotStudioClient,
@@ -20,6 +20,10 @@ export const useChatConnection = ({ token, sessionId }: UseChatConnectionProps) 
     const [isOnline, setIsOnline] = useState(false);
     const initializingSessionId = useRef<string | null>(null);
     const connectionRef = useRef<CopilotStudioWebChatConnection | null>(null);
+
+    const styleOptions = useMemo(() => ({
+        hideSendBox: true
+    }), []);
 
     const cleanupConnection = useCallback(() => {
         if (connectionRef.current) {
@@ -79,7 +83,8 @@ export const useChatConnection = ({ token, sessionId }: UseChatConnectionProps) 
                 // 4. Create Connection
                 // Note: styleOptions are passed to the View (ReactWebChat), not the connection.
                 const newConnection = CopilotStudioWebChat.createConnection(client, {
-                    // showTyping: true // Verify if this is valid, keeping it for now if not flagged
+                    // @ts-ignore: User requested passing styleOptions here despite type definition
+                    styleOptions
                 });
 
                 // 5. Subscribe to outgoing activities
@@ -115,5 +120,5 @@ export const useChatConnection = ({ token, sessionId }: UseChatConnectionProps) 
 
     }, [token, sessionId, cleanupConnection]);
 
-    return { connection, store, isReady: !!connection && !!store, isOnline };
+    return { connection, store, isReady: !!connection && !!store, isOnline, styleOptions };
 };

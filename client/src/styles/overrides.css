@@ -12,13 +12,36 @@
 }
 
 /* Explicitly hide the WebChat send box as we use a custom input */
-div[role="main"]>div[role="form"],
-div[role="main"] form,
-form.sendbox,
-.sendbox,
+/* FORCE HIDE SENDBOX - NUCLEAR OPTION */
+/* Targeting the specific data-testid found in the HTML */
+[data-testid="send box container"],
+[data-testid="send box text area"],
+form[class*="sendbox"],
+.webchat__send-box-container,
 .webchat__send-box,
 .webchat__send-box-main,
-button[title="Upload file"],
-button[title="Send"] {
+.sendbox,
+div[role="form"],
+/* Also target children of our specific container class */
+.webchat-container [data-testid="send box container"] {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    bottom: -9999px !important;
+    z-index: -9999 !important;
+}
+
+/* Ensure the transcript list expands to fill the space */
+/* Ensure the transcript list expands to fill the space */
+.webchat__basic-transcript {
+    padding-bottom: 20px !important;
 }

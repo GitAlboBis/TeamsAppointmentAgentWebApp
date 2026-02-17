@@ -3,6 +3,7 @@ import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider } from './auth/AuthProvider';
 import App from './App';
 import './styles/global.css';
+import './styles/overrides.css';
 
 /**
  * Application entry point.

@@ -23,17 +23,12 @@ export const ChatPane = () => {
     const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
     // Use the custom connection hook
-    const { connection, store, isReady, isOnline } = useChatConnection({
+    const { connection, store, isReady, isOnline, styleOptions } = useChatConnection({
         token,
         sessionId: activeSessionId
     });
 
-    const webchatSettings = {
-        styleOptions: {
-            hideSendBox: true,
-            backgroundColor: 'transparent',
-        }
-    };
+
 
     // Ensure we have a token
     const connectToCopilot = useCallback(async () => {
@@ -150,13 +145,14 @@ export const ChatPane = () => {
 
     return (
         <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                 <FluentThemeProvider>
                     {isReady ? (
                         <ReactWebChat
                             directLine={connection}
                             store={store}
-                            styleOptions={webchatSettings.styleOptions}
+                            styleOptions={styleOptions}
+                            className="webchat-container"
                         />
                     ) : (
                         <div style={{
