@@ -1,5 +1,5 @@
 import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk';
-import { apiGet } from '../shared/api';
+import { SPEECH_KEY, SPEECH_REGION } from '../shared/constants';
 
 /**
  * Wrapper for Azure Cognitive Services Speech SDK.
@@ -11,27 +11,18 @@ export class SpeechService {
     /**
      * Starts continuous speech recognition.
      *
-     * @param authToken - Azure AD Bearer token for the backend API
      * @param onInterim - Callback for partial results (while speaking)
      * @param onFinal - Callback for final results (sentence completed)
      * @param onError - Callback for errors
      */
     async start(
-        authToken: string,
         onInterim: (text: string) => void,
         onFinal: (text: string) => void,
         onError: (error: string) => void
     ) {
         try {
-            // 1. Fetch short-lived Speech auth token from backend
-            //    GET /api/speech/token → { token, region }
-            const { token, region } = await apiGet<{ token: string; region: string }>(
-                '/speech/token',
-                authToken
-            );
-
-            // 2. Configure Speech SDK
-            const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
+            // 1. Configure Speech SDK with direct subscription
+            const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(SPEECH_KEY, SPEECH_REGION);
             speechConfig.speechRecognitionLanguage = 'it-IT'; // Default to Italian per PRD/User preference
             // TODO: Make language configurable/dynamic based on user settings
 

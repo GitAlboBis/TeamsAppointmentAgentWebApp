@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useAuth } from '../auth/useAuth';
 import { SpeechService } from './SpeechService';
 
 /**
@@ -14,7 +13,6 @@ import { SpeechService } from './SpeechService';
  * }
  */
 export function useSpeech() {
-    const { getToken } = useAuth();
     const [isListening, setIsListening] = useState(false);
     const [interimText, setInterimText] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -39,12 +37,8 @@ export function useSpeech() {
             setInterimText('');
 
             try {
-                // Get fresh token (may trigger popup if needed, though usually silent)
-                const authToken = await getToken();
-
                 // Start recognition
                 await speechServiceRef.current.start(
-                    authToken,
                     (interim) => {
                         setInterimText(interim);
                     },
@@ -67,7 +61,7 @@ export function useSpeech() {
                 stopListening();
             }
         },
-        [getToken, stopListening]
+        [stopListening]
     );
 
     // Cleanup on unmount

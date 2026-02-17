@@ -35,6 +35,8 @@ export function useAuth() {
      * Logout and clear MSAL cache.
      */
     async function logout() {
+        if (inProgress !== InteractionStatus.None) return;
+
         await instance.logoutRedirect({
             postLogoutRedirectUri: window.location.origin,
         });

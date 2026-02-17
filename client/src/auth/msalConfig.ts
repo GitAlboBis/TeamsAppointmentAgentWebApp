@@ -78,7 +78,18 @@ export const consentRequest = {
 export const msalInstance = new PublicClientApplication(msalConfig);
 
 /** Initialize MSAL — must complete before any auth operations. */
-export const msalReady = msalInstance.initialize().then(() => {
+/** Initialize MSAL — must complete before any auth operations. */
+export const msalReady = msalInstance.initialize().then(async () => {
+    // Handle redirect promise immediately after initialization
+    try {
+        await msalInstance.handleRedirectPromise();
+    } catch (error: any) {
+        // Ignore "no_token_request_cache_error" as it's common when no redirect happened
+        if (error?.errorCode !== 'no_token_request_cache_error') {
+            console.error("MSAL Redirect Error:", error);
+        }
+    }
+
     // Set active account on login success
     msalInstance.addEventCallback((event: EventMessage) => {
         if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
@@ -87,4 +98,10 @@ export const msalReady = msalInstance.initialize().then(() => {
             msalInstance.setActiveAccount(account);
         }
     });
+
+    // Check availability of account after redirect
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+        msalInstance.setActiveAccount(accounts[0]);
+    }
 });

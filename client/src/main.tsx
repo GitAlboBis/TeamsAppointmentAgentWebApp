@@ -13,39 +13,18 @@ import './styles/global.css';
  *
  * PRD §FR4.8 — Entire tree wrapped in FluentProvider.
  */
-import { msalInstance } from './auth/msalConfig';
+import { msalInstance, msalReady } from './auth/msalConfig';
 
-// Initialize MSAL and handle any pending redirect response
-msalInstance.initialize().then(() => {
-    // Optional: Check if we just returned from a redirect
-    msalInstance.handleRedirectPromise().then(() => {
-        // If tokenResponse is not null, we just logged in.
-        // We can check accounts here if needed.
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-            msalInstance.setActiveAccount(accounts[0]);
-        }
-
-        ReactDOM.createRoot(document.getElementById('root')!).render(
-            <StrictMode>
-                <ThemeProvider>
-                    <AuthProvider>
-                        <App />
-                    </AuthProvider>
-                </ThemeProvider>
-            </StrictMode>
-        );
-    }).catch(error => {
-        console.error("MSAL Redirect Error:", error);
-        // Even on error, render the app (so we can show login page / error state)
-        ReactDOM.createRoot(document.getElementById('root')!).render(
-            <StrictMode>
-                <ThemeProvider>
-                    <AuthProvider>
-                        <App />
-                    </AuthProvider>
-                </ThemeProvider>
-            </StrictMode>
-        );
-    });
+// Initialize MSAL (centralized in msalConfig)
+msalReady.then(() => {
+    // Render App only after MSAL is ready and potential redirects are handled
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+        // <StrictMode> - Disabled due to botframework-webchat custom element collision
+        <ThemeProvider>
+            <AuthProvider>
+                <App />
+            </AuthProvider>
+        </ThemeProvider>
+        // </StrictMode>
+    );
 });
