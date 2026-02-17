@@ -35,6 +35,7 @@ interface ChatInputProps {
 export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
     const styles = useStyles();
     const [text, setText] = useState('');
+    const [speechStartText, setSpeechStartText] = useState('');
 
     const handleSend = useCallback(() => {
         const trimmed = text.trim();
@@ -57,11 +58,21 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
         <div className={styles.container}>
             {/* Mic button — Real-time speech-to-text */}
             <MicButton
-                onInterim={(interim) => setText(interim)}
+                onStart={() => {
+                    // Capture current text when speech starts so we can append to it
+                    setSpeechStartText(text);
+                }}
+                onInterim={(interim) => {
+                    // Append interim result to the text we had at start
+                    const prefix = speechStartText ? speechStartText + ' ' : '';
+                    setText(prefix + interim);
+                }}
                 onTranscript={(final) => {
-                    // Auto-send on final result
-                    onSend(final);
-                    setText('');
+                    // Append final result but DO NOT send automatically
+                    const prefix = speechStartText ? speechStartText + ' ' : '';
+                    setText(prefix + final);
+                    // Update the start text for next utterance if continuous/chained
+                    setSpeechStartText(prefix + final);
                 }}
                 disabled={disabled}
             />

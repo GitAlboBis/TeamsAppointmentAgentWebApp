@@ -29,10 +29,11 @@ const useStyles = makeStyles({
 interface MicButtonProps {
     onTranscript: (text: string) => void;
     onInterim: (text: string) => void;
+    onStart?: () => void;
     disabled?: boolean;
 }
 
-export function MicButton({ onTranscript, onInterim, disabled }: MicButtonProps) {
+export function MicButton({ onTranscript, onInterim, onStart, disabled }: MicButtonProps) {
     const styles = useStyles();
     const { isListening, interimText, startListening, stopListening, error } = useSpeech();
 
@@ -48,6 +49,7 @@ export function MicButton({ onTranscript, onInterim, disabled }: MicButtonProps)
         if (isListening) {
             stopListening();
         } else {
+            onStart?.();
             startListening((text) => {
                 onTranscript(text);
             });

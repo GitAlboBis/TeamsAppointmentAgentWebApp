@@ -23,8 +23,11 @@ export class SpeechService {
         try {
             // 1. Configure Speech SDK with direct subscription
             const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(SPEECH_KEY, SPEECH_REGION);
-            speechConfig.speechRecognitionLanguage = 'it-IT'; // Default to Italian per PRD/User preference
+            speechConfig.speechRecognitionLanguage = 'en-US';
             // TODO: Make language configurable/dynamic based on user settings
+
+            // Set silence timeout to 1 second (1000ms)
+            speechConfig.setProperty(SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, "1000");
 
             // 3. Configure Audio (Mic)
             const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
