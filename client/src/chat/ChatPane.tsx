@@ -68,16 +68,8 @@ export const ChatPane = () => {
         const connectToCopilot = async () => {
             // Safety: If MSAL is already busy (e.g. handling a redirect from login), 
             // DO NOT attempt silent token acquisition. It will fail with 'interaction_in_progress'.
-            // Instead, we just wait. The user can click "Connect" if needed, 
-            // or we could listen to event callbacks (but manual connect is safer for now).
             if (inProgress !== InteractionStatus.None) {
-                console.log("[ChatPane] Interaction in progress. Skipping automatic silent token acquisition.");
-                // We don't set an error here, we just don't connect yet. 
-                // The user sees the "Connect & Authorize" button if they are not connected.
-                // Actually, if we just return, the UI might stay in "Spinner" or empty state.
-                // Let's set a specific error asking to connect manually if it takes too long? 
-                // For now, let's treat it as "needs connection".
-                setError("Please connect to Copilot Studio.");
+                console.log("[ChatPane] Interaction in progress. Waiting for MSAL to return to idle...");
                 return;
             }
 
@@ -106,64 +98,20 @@ export const ChatPane = () => {
         return () => {
             mounted = false;
         };
-    }, [instance, inProgress, getToken, initializeChat]); // dependencies updated
+    }, [instance, inProgress, getToken, initializeChat]);
 
-    const handleManualConnect = async () => {
-        // Clear any stuck error state first to give feedback
+    const handleManualConnect = () => {
+        // Clear any stuck error state first
         setError(null);
+        console.log("[ChatPane] Initiating redirect for manual connection...");
 
-        const waitForIdle = async (maxWaitMs = 5000, intervalMs = 200) => {
-            const start = Date.now();
-            while (Date.now() - start < maxWaitMs) {
-                // We can't easily check internal status without a private property access or hook update.
-                // But we can try to yield a bit.
-                await new Promise(r => setTimeout(r, intervalMs));
-            }
-        };
-
-        let retries = 0;
-        const MAX_RETRIES = 3;
-
-        while (retries <= MAX_RETRIES) {
-            try {
-                // Active cleanup of any pending redirect/state
-                await instance.handleRedirectPromise().catch(err => console.warn("[ChatPane] Cleanup", err));
-
-                console.log(`[ChatPane] Attempting loginPopup (Attempt ${retries + 1})...`);
-
-                // Use loginPopup
-                const response = await instance.loginPopup({
-                    scopes: ['https://api.powerplatform.com/.default'],
-                    prompt: 'select_account'
-                });
-
-                // Success
-                initializeChat(response.accessToken);
-                return;
-
-            } catch (e: any) {
-                console.warn(`[ChatPane] Manual connect error (Attempt ${retries + 1}):`, e);
-
-                const isInteractionError = e.errorCode === 'interaction_in_progress' ||
-                    e.message?.includes('interaction_in_progress');
-
-                if (isInteractionError && retries < MAX_RETRIES) {
-                    setError("System busy. Retrying...");
-                    // Exponential backoff: 2s, 4s, 8s
-                    const waitTime = 2000 * Math.pow(2, retries);
-                    console.log(`[ChatPane] Waiting ${waitTime}ms...`);
-                    await new Promise(r => setTimeout(r, waitTime));
-                    retries++;
-                } else {
-                    if (isInteractionError) {
-                        setError("Authentication system is blocked. Please refresh the page.");
-                    } else {
-                        setError("Connection failed: " + (e.message || "Unknown error"));
-                    }
-                    return;
-                }
-            }
-        }
+        instance.acquireTokenRedirect({
+            scopes: ['https://api.powerplatform.com/.default'],
+            prompt: 'select_account'
+        }).catch(e => {
+            console.error("[ChatPane] Redirect initiation failed:", e);
+            setError("Failed to initiate login redirect: " + (e.message || "Unknown error"));
+        });
     };
 
     const handleSend = (text: string) => {
