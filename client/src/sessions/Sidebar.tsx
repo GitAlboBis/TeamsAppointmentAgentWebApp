@@ -28,7 +28,7 @@ const useStyles = makeStyles({
 
 export function Sidebar() {
     const styles = useStyles();
-    const { sessions, activeSessionId, switchSession, deleteSession, handleNewChat } = useSessionStore();
+    const { sessions, activeSessionId, switchSession, deleteSession, renameSession, handleNewChat } = useSessionStore();
 
     return (
         <div className={styles.container}>
@@ -49,6 +49,7 @@ export function Sidebar() {
                         isActive={session.sessionId === activeSessionId}
                         onSelect={() => switchSession(session.sessionId)}
                         onDelete={() => deleteSession(session.sessionId)}
+                        onRename={(newTitle) => renameSession(session.sessionId, newTitle)}
                     />
                 ))}
 

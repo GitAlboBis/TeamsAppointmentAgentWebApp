@@ -38,8 +38,10 @@ export function MicButton({ onTranscript, onInterim, disabled }: MicButtonProps)
 
     // Propagate interim text up to parent (ChatInput)
     useEffect(() => {
-        onInterim(interimText);
-    }, [interimText, onInterim]);
+        if (isListening && interimText) {
+            onInterim(interimText);
+        }
+    }, [isListening, interimText, onInterim]);
 
     // Handle button click
     const handleClick = () => {

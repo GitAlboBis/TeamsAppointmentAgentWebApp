@@ -14,6 +14,7 @@ export function useSessionStore() {
         switchSession,
         deleteSession,
         updateWatermark,
+        renameSession,
         handleNewChat
     } = useSessionContext();
 
@@ -37,6 +38,7 @@ export function useSessionStore() {
         createSession,
         updateWatermark,
         deleteSession,
+        renameSession,
         switchSession,
         handleNewChat
     };

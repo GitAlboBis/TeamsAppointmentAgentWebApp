@@ -1,98 +1,65 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../auth/useAuth';
 import { InteractionStatus } from '@azure/msal-browser';
-import {
-    CopilotStudioClient,
-    CopilotStudioWebChat,
-    type CopilotStudioWebChatConnection,
-    type ConnectionSettings
-} from '@microsoft/agents-copilotstudio-client';
 import ReactWebChat from 'botframework-webchat';
 import { FluentThemeProvider } from 'botframework-webchat-fluent-theme';
-import { agentsSettings } from '../shared/constants';
 import { Spinner, MessageBar, MessageBarBody, Button } from '@fluentui/react-components';
 import { ChatInput } from './ChatInput';
 import { useSessionStore } from '../sessions/useSessionStore';
+import { useChatConnection } from './useChatConnection';
 
 export const ChatPane = () => {
-    // Use custom auth hook (Refactored to separate concerns)
+    // Custom auth hook
     const { inProgress, getToken, loginRedirect } = useAuth();
 
-    // Use global session store
+    // Global session store
     const { activeSessionId, createSession } = useSessionStore();
 
-    const [connection, setConnection] = useState<CopilotStudioWebChatConnection | null>(null);
+    // Local state for token management
+    const [token, setToken] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isCreatingSession, setIsCreatingSession] = useState(false);
+    const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+
+    // Use the custom connection hook
+    const { connection, store, isReady, isOnline } = useChatConnection({
+        token,
+        sessionId: activeSessionId
+    });
 
     const webchatSettings = {
-        showTyping: true,
         styleOptions: {
             hideSendBox: true,
+            backgroundColor: 'transparent',
         }
     };
 
-    const connectionRef = useRef<CopilotStudioWebChatConnection | null>(null);
-
-    const cleanupConnection = useCallback(() => {
-        if (connectionRef.current) {
-            connectionRef.current.end();
-            connectionRef.current = null;
-        }
-    }, []);
-
-    const initializeChat = useCallback((token: string) => {
-        cleanupConnection();
-
-        const client = new CopilotStudioClient(
-            agentsSettings as ConnectionSettings,
-            token
-        );
-        const newConnection = CopilotStudioWebChat.createConnection(client, webchatSettings);
-
-        newConnection.activity$.subscribe((activity) => {
-            if (activeSessionId && activity.type === 'message') {
-                // Future persistence logic here
-            }
-        });
-
-        connectionRef.current = newConnection;
-        setConnection(newConnection);
-    }, [activeSessionId, cleanupConnection]);
-
+    // Ensure we have a token
     const connectToCopilot = useCallback(async () => {
         if (inProgress !== InteractionStatus.None) return;
+        if (token) return;
 
         try {
-            // Use enhanced useAuth with specific Power Platform scope
-            const token = await getToken(['https://api.powerplatform.com/.default']);
-            if (!token) return;
-
-            initializeChat(token);
-
+            const newToken = await getToken(['https://api.powerplatform.com/.default']);
+            if (newToken) {
+                setToken(newToken);
+                setError(null);
+            }
         } catch (err) {
             console.error("Failed to connect:", err);
             setError(err instanceof Error ? err.message : "Failed to connect");
         }
-    }, [getToken, initializeChat, inProgress]);
+    }, [getToken, inProgress, token]);
 
+    // Initial connection attempt
     useEffect(() => {
-        // Simple connectivity check on mount or session change
-        // We might want to defer this until user interaction for "New Chat" 
-        // but for now we keep it eager to be ready.
         connectToCopilot();
-
-        return () => {
-            cleanupConnection();
-            setConnection(null);
-        };
-    }, [activeSessionId, connectToCopilot, cleanupConnection]);
+    }, [connectToCopilot]);
 
     const handleManualConnect = () => {
         setError(null);
         console.log("[ChatPane] Initiating redirect for manual connection...");
-        // Use exposed method from useAuth
         loginRedirect({
             scopes: ['https://api.powerplatform.com/.default'],
             prompt: 'select_account'
@@ -102,45 +69,51 @@ export const ChatPane = () => {
         });
     };
 
+    const sendMessage = useCallback((text: string) => {
+        if (!store) return;
+
+        store.dispatch({
+            type: 'WEB_CHAT/SEND_MESSAGE',
+            payload: { text: text.trim() }
+        });
+    }, [store]);
+
+    // Send pending message when connection is online
+    useEffect(() => {
+        if (isOnline && pendingMessage) {
+            sendMessage(pendingMessage);
+            setPendingMessage(null);
+        }
+    }, [isOnline, pendingMessage, sendMessage]);
+
     const handleSend = async (text: string) => {
         if (!text.trim()) return;
 
+        // If no active session, create one
         if (!activeSessionId && !isCreatingSession) {
             setIsCreatingSession(true);
+            setPendingMessage(text); // Queue message
             try {
-                const token = await getToken(['https://api.powerplatform.com/.default']);
-                // Create local session placeholder
-                // Create local session placeholder
-                await createSession("placeholder-conv-id", token, 3600);
-
-                if (connection) {
-                    const activity = {
-                        type: 'message',
-                        id: uuidv4(),
-                        from: { id: 'user' }, // useAuth could provide account.localAccountId if needed
-                        text: text.trim(),
-                    };
-                    connection.postActivity(activity as any).subscribe({
-                        error: (err) => console.error("Error posting activity:", err)
-                    });
-                    // Sync session details if needed after first message
+                // Ensure we have a token before creating session
+                let currentToken = token;
+                if (!currentToken) {
+                    currentToken = await getToken(['https://api.powerplatform.com/.default']);
+                    setToken(currentToken);
                 }
 
+                if (currentToken) {
+                    const newSessionId = uuidv4();
+                    await createSession(newSessionId, currentToken, 3600);
+                }
             } catch (e) {
                 console.error("Error starting chat:", e);
+                setError("Failed to start chat session.");
+                setPendingMessage(null); // Clear on error
             } finally {
                 setIsCreatingSession(false);
             }
-        } else if (connection) {
-            const activity = {
-                type: 'message',
-                id: uuidv4(),
-                from: { id: 'user' },
-                text: text.trim(),
-            };
-            connection.postActivity(activity as any).subscribe({
-                error: (err) => console.error("Error posting activity:", err)
-            });
+        } else if (isReady) {
+            sendMessage(text);
         }
     };
 
@@ -164,7 +137,10 @@ export const ChatPane = () => {
         );
     }
 
-    if (!connection) {
+    // If we have an active session but connection is not ready, show spinner
+    // If no active session, we show empty chat UI (allowing user to start new chat)
+    // If active session exists but not ready, show spinner
+    if (activeSessionId && !isReady) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                 <Spinner size="large" label="Connecting to Copilot..." />
@@ -174,13 +150,30 @@ export const ChatPane = () => {
 
     return (
         <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
-            <FluentThemeProvider>
-                <ReactWebChat
-                    directLine={connection}
-                    styleOptions={webchatSettings.styleOptions}
-                />
-            </FluentThemeProvider>
-            <ChatInput onSend={handleSend} disabled={!connection} />
+            <div style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <FluentThemeProvider>
+                    {isReady ? (
+                        <ReactWebChat
+                            directLine={connection}
+                            store={store}
+                            styleOptions={webchatSettings.styleOptions}
+                        />
+                    ) : (
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            height: '100%',
+                            color: '#666'
+                        }}>
+                            <p>Start a new conversation</p>
+                        </div>
+                    )}
+                </FluentThemeProvider>
+            </div>
+            <div style={{ position: 'relative', zIndex: 100 }}>
+                <ChatInput onSend={handleSend} disabled={isCreatingSession} />
+            </div>
         </div>
     );
 };

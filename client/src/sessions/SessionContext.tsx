@@ -9,6 +9,7 @@ interface SessionContextType {
     switchSession: (sessionId: string | null) => void;
     deleteSession: (sessionId: string) => Promise<void>;
     updateWatermark: (sessionId: string, watermark: string) => Promise<void>;
+    renameSession: (sessionId: string, newTitle: string) => Promise<void>;
     handleNewChat: () => void;
 }
 
@@ -61,10 +62,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await db.sessions.update(sessionId, { watermark, updatedAt: Date.now() });
     }, []);
 
+    const renameSession = useCallback(async (sessionId: string, newTitle: string) => {
+        await db.sessions.update(sessionId, { title: newTitle, updatedAt: Date.now() });
+    }, []);
+
     return (
         <SessionContext.Provider value={{
             activeSessionId,
             createSession,
+            renameSession,
             switchSession,
             deleteSession,
             updateWatermark,

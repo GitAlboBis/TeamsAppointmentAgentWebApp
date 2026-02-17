@@ -10,3 +10,15 @@
 .webchat__basic-transcript {
     flex: 1;
 }
+
+/* Explicitly hide the WebChat send box as we use a custom input */
+div[role="main"]>div[role="form"],
+div[role="main"] form,
+form.sendbox,
+.sendbox,
+.webchat__send-box,
+.webchat__send-box-main,
+button[title="Upload file"],
+button[title="Send"] {
+    display: none !important;
+}

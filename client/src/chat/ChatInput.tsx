@@ -73,6 +73,7 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
                 onChange={(_e, data) => setText(data.value)}
                 onKeyDown={handleKeyDown}
                 disabled={disabled}
+                autoFocus
             />
 
             <Button

@@ -1,4 +1,5 @@
 
+import { useState, useRef, useEffect } from 'react';
 import {
     Button,
     makeStyles,
@@ -9,6 +10,7 @@ import {
     MenuList,
     MenuItem,
     MenuPopover,
+    Input,
 } from '@fluentui/react-components';
 import { MoreHorizontal24Regular, Delete24Regular, Rename24Regular } from '@fluentui/react-icons';
 import type { ChatSession } from './sessionDb';
@@ -58,8 +60,35 @@ interface SessionItemProps {
     onRename?: (newTitle: string) => void;
 }
 
-export function SessionItem({ session, isActive, onSelect, onDelete }: SessionItemProps) {
+export function SessionItem({ session, isActive, onSelect, onDelete, onRename }: SessionItemProps) {
     const styles = useStyles();
+    const [isEditing, setIsEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState(session.title);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [isEditing]);
+
+    const handleRenameSubmit = () => {
+        setIsEditing(false);
+        if (editTitle.trim() && editTitle !== session.title && onRename) {
+            onRename(editTitle.trim());
+        } else {
+            setEditTitle(session.title); // Revert if empty or unchanged
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleRenameSubmit();
+        } else if (e.key === 'Escape') {
+            setIsEditing(false);
+            setEditTitle(session.title);
+        }
+    };
 
     return (
         <div
@@ -67,7 +96,23 @@ export function SessionItem({ session, isActive, onSelect, onDelete }: SessionIt
             onClick={onSelect}
         >
             <div className={styles.content}>
-                <Text className={styles.title}>{session.title}</Text>
+                {isEditing ? (
+                    <Input
+                        ref={inputRef}
+                        value={editTitle}
+                        onChange={(_e, data) => setEditTitle(data.value)}
+                        onBlur={handleRenameSubmit}
+                        onKeyDown={handleKeyDown}
+                        onClick={(e) => e.stopPropagation()} // Prevent selecting the session
+                        size="small"
+                    />
+                ) : (
+                    <Text className={styles.title} onDoubleClick={() => {
+                        if (onRename) setIsEditing(true);
+                    }}>
+                        {session.title}
+                    </Text>
+                )}
                 <Text className={styles.timestamp}>
                     {new Date(session.updatedAt).toLocaleDateString()}
                 </Text>
@@ -83,8 +128,18 @@ export function SessionItem({ session, isActive, onSelect, onDelete }: SessionIt
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
-                        <MenuItem icon={<Rename24Regular />}>Rename</MenuItem>
-                        <MenuItem icon={<Delete24Regular />} onClick={onDelete}>
+                        <MenuItem
+                            icon={<Rename24Regular />}
+                            onClick={() => {
+                                if (onRename) setIsEditing(true);
+                            }}
+                        >
+                            Rename
+                        </MenuItem>
+                        <MenuItem icon={<Delete24Regular />} onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete();
+                        }}>
                             Delete
                         </MenuItem>
                     </MenuList>
