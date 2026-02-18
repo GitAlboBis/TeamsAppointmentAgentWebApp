@@ -48,8 +48,6 @@ export class SpeechService {
                     if (e.result.text && e.result.text.trim()) {
                         onFinal(e.result.text);
                     }
-                } else if (e.result.reason === SpeechSDK.ResultReason.NoMatch) {
-                    console.log('[SpeechService] SEMAPHORE: No speech could be recognized.');
                 }
             };
 
@@ -63,7 +61,6 @@ export class SpeechService {
             };
 
             this.recognizer.sessionStopped = (_s, _e) => {
-                console.log('[SpeechService] Session stopped.');
                 this.stop();
             };
 
@@ -93,16 +90,4 @@ export class SpeechService {
         }
     }
 
-    /**
-     * Validates browser microphone permission (optional helper).
-     */
-    static async requestMicrophonePermission(): Promise<boolean> {
-        try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-            return true;
-        } catch (err) {
-            console.error('[SpeechService] Mic permission exceeded/denied:', err);
-            return false;
-        }
-    }
 }

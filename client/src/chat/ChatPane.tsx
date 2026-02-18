@@ -54,7 +54,6 @@ export const ChatPane = () => {
 
     const handleManualConnect = () => {
         setError(null);
-        console.log("[ChatPane] Initiating redirect for manual connection...");
         loginRedirect({
             scopes: ['https://api.powerplatform.com/.default'],
             prompt: 'select_account'

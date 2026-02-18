@@ -1,107 +1,157 @@
 # Copilot Web Client
 
-A modern, standalone React 19 frontend for interacting with Microsoft Copilot Studio agents. This application uses a client-only architecture with direct integration to Copilot Studio via Direct Line and Azure AD authentication.
+A modern, serverless web application that connects users to a **Microsoft Copilot Studio** agent for booking and managing appointments via natural-language chat. Built with React 19, Fluent UI, and Azure AD 
 
-## 🚀 Features
+---
 
-- **Framework**: React 19, Vite, TypeScript.
-- **UI Component Library**: Fluent UI React Components (v9).
-- **Authentication**: Secure client-side authentication using MSAL (`@azure/msal-react`) with Redirect flow.
-- **Chat Integration**: Direct connection to Copilot Studio using `@microsoft/agents-copilotstudio-client`.
-- **Speech**: Integrated Speech-to-Text using Azure Cognitive Services.
-- **Architecture**: Single Page Application (SPA) - No middleware server required.
+## ✨ What It Does
+
+Users sign in with their Microsoft account and interact with an AI-powered Appointment Agent directly in the browser. The agent can:
+
+- **Book, reschedule, and cancel appointments** through conversational prompts.
+- **Provide real-time voice input** via Azure Speech-to-Text — just press the mic button and speak.
+- **Persist chat history** locally using IndexedDB, so conversations survive page refreshes.
+- **Support multiple sessions** with a sidebar for switching between active chats.
+- **Adapt to light/dark mode** based on system preference or manual toggle.
+
+---
+
+## 🏗️ How It Works
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Browser (SPA)                      │
+│                                                         │
+│  ┌──────────┐    ┌────────────────┐    ┌─────────────┐  │
+│  │  Azure AD │◄──►│  React + MSAL  │◄──►│  Copilot     │  │
+│  │  (Login)  │    │  (Fluent UI)   │    │  Studio SDK  │  │
+│  └──────────┘    └────────────────┘    └──────┬──────┘  │
+│                         │                     │         │
+│                  ┌──────▼──────┐        ┌─────▼──────┐  │
+│                  │  IndexedDB  │        │  Azure     │  │
+│                  │  (Dexie)    │        │  Speech    │  │
+│                  └─────────────┘        └────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Auth** | MSAL.js v5 (Redirect flow) | Azure AD login with PKCE, silent token refresh |
+| **Chat** | `@microsoft/agents-copilotstudio-client` | Direct connection to Copilot Studio agent |
+| **UI** | Fluent UI v9 + BotFramework WebChat | Themed chat interface with Fluent design tokens |
+| **Speech** | Azure Cognitive Services Speech SDK | Real-time microphone → text transcription |
+| **Storage** | Dexie (IndexedDB) | Offline-capable session and message persistence |
+| **Bundler** | Vite 5 + TypeScript 5 | Fast dev server, optimized production builds |
+
+---
 
 ## 📋 Prerequisites
 
-- **Node.js**: v20 or higher.
-- **Copilot Studio Agent**: An agent created in Copilot Studio with the "Mobile app" or "Custom website" channel enabled.
-- **Azure App Registration**:
-  - Registered as a **Single Page Application (SPA)**.
-  - Redirect URI configured (e.g., `http://localhost:5173`).
-  - API Permissions for accessing the agent (if applicable).
-- **Azure Speech Service** (Optional): Key and Region for speech capabilities.
+- **Node.js** v20+
+- **Azure AD App Registration** — SPA type, with redirect URI configured
+- **Copilot Studio Agent** — with the "Mobile app" or "Custom website" channel enabled
+- **Azure Speech Service** _(optional)_ — subscription key and region for voice input
 
-## 🛠️ Installation & Setup
+---
 
-1.  **Clone the repository**:
-    ```bash
-    git clone <repository-url>
-    cd copilot-web-client
-    ```
+## � Quick Start
 
-2.  **Navigate to the client directory**:
-    The entire application lives in the `client` folder.
-    ```bash
-    cd client
-    ```
+```bash
+# 1. Clone and install
+git clone <repository-url>
+cd copilot-web-client/client
+npm install
 
-3.  **Install dependencies**:
-    ```bash
-    npm install
-    ```
+# 2. Configure environment
+cp .env.example .env   # Then edit with your values (see below)
 
-4.  **Configure Environment Variables**:
-    Create a `.env` file in the `client` directory based on the example below:
+# 3. Start dev server
+npm run dev
+```
 
-    ```env
-    # --- Vite Server ---
-    VITE_PORT=5173
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-    # --- MSAL / Azure AD Authentication ---
-    VITE_MSAL_CLIENT_ID=<your-spa-client-id>
-    VITE_MSAL_TENANT_ID=<your-tenant-id>
-    VITE_MSAL_REDIRECT_URI=http://localhost:5173
+### Environment Variables
 
-    # --- Copilot Studio Agent Details ---
-    VITE_COPILOT_APP_CLIENT_ID=<your-copilot-app-id>
-    VITE_COPILOT_TENANT_ID=<your-tenant-id>
-    VITE_COPILOT_ENV_ID=<environment-id>
-    VITE_COPILOT_AGENT_ID=<agent-id>
+Create a `.env` file in the `client/` directory:
 
-    # --- Azure Speech Service (Optional) ---
-    VITE_SPEECH_KEY=<your-speech-key>
-    VITE_SPEECH_REGION=<your-speech-region>
-    ```
+```env
+# Azure AD Authentication
+VITE_MSAL_CLIENT_ID=<your-spa-client-id>
+VITE_MSAL_TENANT_ID=<your-azure-ad-tenant-id>
+VITE_MSAL_REDIRECT_URI=http://localhost:5173
 
-5.  **Run the development server**:
-    ```bash
-    npm run dev
-    ```
-    Open [http://localhost:5173](http://localhost:5173) in your browser.
+# Copilot Studio Agent
+VITE_COPILOT_APP_CLIENT_ID=<your-copilot-app-client-id>
+VITE_COPILOT_TENANT_ID=<your-copilot-tenant-id>
+VITE_COPILOT_ENV_ID=<copilot-environment-id>
+VITE_COPILOT_AGENT_ID=<copilot-agent-schema-name>
 
-## 🏗️ Build & Deploy
+# Azure Speech Service (enables voice input)
+VITE_SPEECH_KEY=<your-speech-subscription-key>
+VITE_SPEECH_REGION=<e.g. westeurope>
+```
 
-To create a production build:
+---
+
+## 📦 Build & Deploy
 
 ```bash
 npm run build
 ```
 
-The output will be in the `dist` directory, ready to be deployed to any static site host (Azure Static Web Apps, Vercel, Netlify, etc.).
+The output is in `client/dist/` — a fully static bundle ready for any hosting platform:
+- **Azure Static Web Apps**
+- **Vercel / Netlify**
+- **GitHub Pages**
+- Any web server serving static files
+
+> **Note:** Ensure your Azure AD App Registration includes the production redirect URI.
+
+---
 
 ## 📂 Project Structure
 
 ```
-copilot-web-client/
-└── client/                # Main application source
-    ├── public/            # Static assets
-    ├── src/
-    │   ├── auth/          # MSAL configuration and AuthProvider
-    │   ├── chat/          # Chat interface and Direct Line logic
-    │   ├── components/    # Reusable UI components
-    │   ├── services/      # Service integrations
-    │   ├── shared/        # Constants and types
-    │   ├── styles/        # Global styles and themes
-    │   ├── utils/         # Helper functions
-    │   ├── App.tsx        # Main App component
-    │   └── main.tsx       # Entry point
-    ├── index.html         # HTML template
-    ├── package.json       # Dependencies and scripts
-    └── vite.config.ts     # Vite configuration
+client/src/
+├── auth/              # MSAL config, AuthProvider, useAuth hook
+├── chat/              # ChatPane, ChatInput, connection hook
+├── layout/            # Header, MainLayout (sidebar + chat grid)
+├── sessions/          # Session context, Dexie DB, Sidebar, SessionItem
+├── shared/            # Constants (env variables)
+├── speech/            # Azure Speech SDK service, MicButton, useSpeech hook
+├── styles/            # Global CSS, WebChat overrides
+├── theme/             # Fluent UI theme (light/dark), ThemeContext
+├── App.tsx            # Root: auth gate → layout → chat
+└── main.tsx           # Entry point: MSAL init → React render
 ```
 
-## 🤝 Contributing
+---
 
-1.  Navigate to `client/`.
-2.  Run `npm run lint` to check for code style issues.
-3.  Run `npm test` to execute unit tests.
+## 🧪 Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start Vite dev server on port 5173 |
+| `npm run build` | TypeScript check + production build |
+| `npm run preview` | Preview the production build locally |
+| `npm test` | Run unit tests (Vitest) |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage` | Run tests with coverage report |
+| `npm run lint` | Lint with ESLint |
+
+---
+
+## 🔐 Authentication Flow
+
+1. User lands on the **Login Page** (unauthenticated).
+2. Clicks **"Sign in with Microsoft"** → MSAL redirect to Azure AD.
+3. After login, MSAL silently acquires a Power Platform token (`https://api.powerplatform.com/.default`).
+4. The token is used to initialize a direct connection to the Copilot Studio agent.
+5. Tokens refresh silently in the background; interactive consent popup triggers only when needed.
+
+---
+
+## 📄 License
+
+This project is private and proprietary.

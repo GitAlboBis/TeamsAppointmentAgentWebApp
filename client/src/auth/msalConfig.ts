@@ -8,10 +8,7 @@ import {
 } from '@azure/msal-browser';
 import { MSAL_CLIENT_ID, MSAL_TENANT_ID, MSAL_REDIRECT_URI } from '@/shared/constants';
 
-/**
- * MSAL configuration for the frontend SPA.
- * PRD §FR1.1 — Authorization Code + PKCE flow.
- */
+
 const msalConfig: Configuration = {
     auth: {
         clientId: MSAL_CLIENT_ID,
@@ -34,15 +31,7 @@ const msalConfig: Configuration = {
     },
 };
 
-/**
- * Scopes for the login request.
- * PRD §FR1.2 — openid, profile, User.Read, + backend API scope.
- */
-/**
- * Scopes for the login request.
- * PRD §FR1.2 — openid, profile, User.Read (Graph).
- * Hybrid Auth: We do NOT request the backend API scope anymore to avoid Admin Consent.
- */
+
 export const loginRequest = {
     scopes: [
         'openid',
@@ -77,7 +66,6 @@ export const consentRequest = {
  */
 export const msalInstance = new PublicClientApplication(msalConfig);
 
-/** Initialize MSAL — must complete before any auth operations. */
 /** Initialize MSAL — must complete before any auth operations. */
 export const msalReady = msalInstance.initialize().then(async () => {
     // Handle redirect promise immediately after initialization
