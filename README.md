@@ -128,19 +128,7 @@ client/src/
 
 ---
 
-## 🧪 Scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start Vite dev server on port 5173 |
-| `npm run build` | TypeScript check + production build |
-| `npm run preview` | Preview the production build locally |
-| `npm test` | Run unit tests (Vitest) |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with coverage report |
-| `npm run lint` | Lint with ESLint |
-
----
 
 ## 🔐 Authentication Flow
 
@@ -152,6 +140,4 @@ client/src/
 
 ---
 
-## 📄 License
 
-This project is private and proprietary.
