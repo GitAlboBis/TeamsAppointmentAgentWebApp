@@ -19,7 +19,7 @@
         "@fluentui/react-icons": "^2.0.0",
         "@microsoft/agents-copilotstudio-client": "^1.2.3",
         "@types/uuid": "^10.0.0",
-        "botframework-webchat": "^4.18.1-main.20260206.32ae93a",
+        "botframework-webchat": "^4.18.1-main.20260408.cf3f743",
         "botframework-webchat-fluent-theme": "^4.18.1-main.20260408.cf3f743",
         "dexie": "^4.0.0",
         "dexie-react-hooks": "^4.2.0",
